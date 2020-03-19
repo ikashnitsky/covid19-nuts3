@@ -1,11 +1,12 @@
 #===============================================================================
-# 2020-03-18 -- twitter
-# regional age differences and ncov-19
+# 2020-03-19 -- covid19
+# regional age differences and covid19
 # Ilya Kashnitsky, ilya.kashnitsky@gmail.com
 #===============================================================================
 
 library(tidyverse)
 library(magrittr)
+library(paletteer)
 library(prismatic)
 library(hrbrthemes)
 library(cowplot)
@@ -20,23 +21,26 @@ showtext::showtext_auto()
 
 
 # Italy fatality data -----------------------------------------------------
-# https://www.epicentro.iss.it/coronavirus/bollettino/Infografica_17marzo%20ENG.pdf
+# https://www.epicentro.iss.it/coronavirus/bollettino/Infografica_18marzo%20ENG.pdf
 cfr <- tibble::tribble(
               ~age, ~cfr,
              "0-9",    0,
            "10-19",    0,
            "20-29",    0,
            "30-39",  0.3,
-           "40-49",  0.4,
-           "50-59",  1,
-           "60-69",  3.5,
-           "70-79", 12.3,
-           "80-89", 19.6,
-             "90+", 22.9
+           "40-49",  0.5,
+           "50-59",  1.1,
+           "60-69",  3.9,
+           "70-79", 13.4,
+           "80-89", 20.6,
+             "90+", 23.1
            )
 
 
+
+
 # data -----------------------------------------------------------------
+
 
 # eurostat data
 library(eurostat)
@@ -50,7 +54,7 @@ gde3 <- eurostat_geodata_60_2016 %>%
            !str_sub(geo, 1, 4) %in% remote) %>% 
     select(id, geometry) %>% 
     st_transform(crs = 3035)
-save(gde3, file = "gde3.rda", compress = "xz")
+save(gde3, file = "eu-dem/gde3.rda", compress = "xz")
 
 # country borders
 bord <- eurostat_geodata_60_2016 %>% 
@@ -59,7 +63,7 @@ bord <- eurostat_geodata_60_2016 %>%
     select(id, geometry) %>% 
     st_transform(crs = 3035) %>% 
     rmapshaper::ms_innerlines()
-save(gde3, file = "bord.rda", compress = "xz")
+save(gde3, file = "eu-dem/bord.rda", compress = "xz")
 
 # cities to show
 cities <- maps::world.cities %>%
@@ -79,18 +83,18 @@ cities <- maps::world.cities %>%
         coords = c("long", "lat"),
         crs = 4326
     )
+save(cities, file = "eu-dem/cities.rda", compress = "xz")
 
 # population structures
 df_eu <- get_eurostat("demo_r_pjangrp3")
-save(df_eu, file = "df_eu.rda", compress = "xz")
-
+save(df_eu, file = "eu-dem/df_eu.rda", compress = "xz")
 
 
 # reload back the data (start here if return to  the  code) ---------------
 
-load("gde3.rda")
-load("df_eu.rda")
-
+load("eu-dem/gde3.rda")
+load("eu-dem/bord.rda")
+load("eu-dem/df_eu.rda")
 
 # redefine age factor levels
 age_levels <- c("rm", "rm", "10-19", "10-19", "20-29", "20-29", "30-39", "30-39", "40-49", "40-49", "0-9", "50-59", "50-59", "60-69", "60-69", "70-79", "70-79", "80-89", "80-89", "rm", "90+", "0-9")
@@ -154,14 +158,14 @@ ce3 <- dfe3 %>%
             cut(c(0, .5, 2/3, 4/5, .95, 100/95, 5/4, 3/2, 2, Inf)) %>% 
             lvls_revalue(
                 c(
-                    "Below 50% (35)", 
-                    "From 50% to 67% (38)", 
-                    "From 67% to 80% (64)",
-                    "From 80% to 95% (174)", 
+                    "Below 50% (33)", 
+                    "From 50% to 67% (40)", 
+                    "From 67% to 80% (62)",
+                    "From 80% to 95% (176)", 
                     "European average ± 5% (234)", 
-                    "From 105% to 125% (563)",
-                    "From 125% to 150% (322)", 
-                    "From 150% to 200% (55)", 
+                    "From 105% to 125% (565)",
+                    "From 125% to 150% (326)", 
+                    "From 150% to 200% (49)", 
                     "Above 200% (1)"
                 )
             )
@@ -170,16 +174,17 @@ ce3 <- dfe3 %>%
     
 # attach geodata
 me3 <- gde3 %>% left_join(ce3, "id") %>% drop_na()
+save(me3, file = "eu-dem/me3.rda", compress = "xz")
 
+# load back the final dataset to plot
+load("eu-dem/me3.rda")
 
-
+# color palette
 pal <- RColorBrewer::brewer.pal(9, "BrBG") %>% rev 
-
 pal.25 <- pal %>% clr_darken(shift = .25)
  
 # deviation from EU level   
 me3 %>% 
-    # filter(!str_sub(id, 1, 2) %in% c("TR")) %>% 
     ggplot()+
     geom_sf(aes(fill = rel_prop_gr, geometry = geometry), color = NA)+
     geom_sf(data = bord, color = "#ffffff", size = .5)+
@@ -191,7 +196,7 @@ me3 %>%
           plot.title = element_text(family = "Roboto Slab", 
                                     face = 2, size = 24))+
     labs(title = "COVID-19 in unequally ageing European regions",
-         subtitle = "NUTS-3 regions of Europe are colored according to the deviation from European pooled estimate of the proportion of population at risk of death due to COVID-19. These estimates assume age-specific case-fatality ratio the same as in Italy for the 2003 first registered COVID-19 deaths (17 March 2019) and 2/3 of the total population infected. Such an estimate for the total European population is 1.77%. Please note, this estimate is very rough and unlikely to hold true due to multiple biases of the data for the unfolding pandemic; in contrast, the population age structures data are of good quality. Thus, whatever the total infected population is and the absolute values of age-specific case-fatality ratios, the relative differences between regions would hold as long as the age-specific profile of case-fatality ratios stays proportional. This map reflects the unequal population age structures rather than the precise figures on COVID-19 fatality. It's a demographic perspective." %>% 
+         subtitle = "NUTS-3 regions of Europe are colored according to the deviation from European pooled estimate of the proportion of population at risk of death due to COVID-19. These estimates assume age-specific case-fatality ratio the same as in Italy for the 2390 first registered COVID-19 deaths (18 March 2019) and 2/3 of the total population infected. Such an estimate for the total European population is 1.9%. Please note, this estimate is very rough and unlikely to hold true due to multiple biases of the data for the unfolding pandemic; in contrast, the population age structures data are of good quality. Thus, whatever the total infected population is and the absolute values of age-specific case-fatality ratios, the relative differences between regions would hold as long as the age-specific profile of case-fatality ratios stays proportional. This map reflects the unequal population age structures rather than the precise figures on COVID-19 fatality. It's a demographic perspective." %>% 
              str_wrap(width = 81),
          caption = "Data: Eurostat, Istituto Superiore di Sanità | Design: Ilya Kashnitsky @ikashnitsky",
          fill = NULL)
@@ -200,7 +205,6 @@ map <- last_plot()
 
 # plot values by countries
 ce3 %>% 
-    # filter(!str_sub(id, 1, 2) %in% c("TR")) %>% 
     mutate(country = id %>% str_sub(1, 2)) %>% 
     group_by(country) %>% 
     mutate(avg_prop = prop %>% weighted.mean(w = value),
@@ -226,15 +230,15 @@ ce3 %>%
          y = NULL,
          size = "Population\nsize,\nmillion")+
     annotate("text", x = eu_avg_prop, y = 4, 
-             label = "European population\npooled average, 1.77%",
-             size = 4, color = "#B8B8B8", hjust = -.1, lineheight = .9,
+             label = "European population\npooled average, 1.9%",
+             size = 4, color = "#B8B8B8", hjust = -.05, lineheight = .9,
              family = font_rc)
   
 stamp <- last_plot()
 
 
 # age profile of case fatality ratios
-cfr %>% 
+stamp_cfr <- cfr %>% 
     ggplot(aes(cfr, age, fill = cfr))+
     geom_col(color = NA, width = .75)+
     scale_fill_gradientn(colours = pal.25[6:9], guide = NULL)+
@@ -247,17 +251,15 @@ cfr %>%
          y = NULL,
          subtitle = "Case Fatality\nRatio by age, %")
 
-stamp_cfr <- last_plot()
-
-
 # compose final plot
 out <- ggdraw()+
     draw_plot(map)+
     draw_plot(stamp, x = .6, y = .34, width = .38, height = .33)+
     draw_plot(stamp_cfr, x = 0, y = .33, width = .2, height = .25)
 
+  
 # export  result as PDF
-ggsave("deviations.pdf", 
+ggsave("eu-dem/deviations.pdf", 
        out, 
        width = 8, height = 12.5, 
        device = cairo_pdf)
