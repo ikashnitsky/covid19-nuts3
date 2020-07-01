@@ -11,7 +11,7 @@ This replication repository contains raw and processed data and all the code tha
 
 The repository "R" conrtains three scripts, which are named according to the tasks that they perform. 
 
-The final figure is polished a bit using Inkscape, the .svg file is available in the "Inkscape" directory. 
+The final figure is polished a bit using Inkscape, the .svg file is available in the "inkscape" directory. 
 
 [osf]: https://doi.org/10.31219/osf.io/abx7s
 [f1png]: inkscape/unequal-ageing-map-touch.png
