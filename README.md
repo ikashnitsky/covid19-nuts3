@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/248101056.svg)](https://zenodo.org/badge/latestdoi/248101056)  
 [![osf](https://img.shields.io/badge/osf-abx7s-lightgrey.svg?style=for-the-badge)][osf]
 
 # Kashnitsky, I., & Aburto, J. M. (2020). COVID-19 in unequally ageing European regions. OSF Preprint. https://doi.org/10.31219/osf.io/abx7s
